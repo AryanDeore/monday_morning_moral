@@ -215,6 +215,11 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# PyTorch / ML artifacts (generated, can be regenerated)
+*.pt
+data/*.pt
+checkpoints/
+
 notes/
 claude/
 reference/
