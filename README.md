@@ -10,10 +10,16 @@ Dataset Structure:
   - 99.98% of stories have |endoftext| delimiter
 
 ### After tokenization
-  - Train tokens: 526.7 million
+  - Train tokens: 526.7 million (0.5 Billion)
   - Test tokens: 13.6 million
   - Total: 540.4 million tokens
 
+## Epochs Calculation:
+**Chinchilla suggests:** Train on 20 tokens per parameter
+- For 163M parameters GPT-2 model: 163,009,536 × 20 = **3.26 billion tokens needed**
+**We have:** **0.5 billion training tokens** in our dataset
+**So we need to:** Train for **~6-7 epochs** (3.26B ÷ 526.7M = 6.19 epochs)
+- This gives us Chinchilla-optimal training with a single-epoch equivalent of diverse data
 
 ## Process:
 1. **Tokenization**: 
