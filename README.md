@@ -26,3 +26,28 @@ Dataset Structure:
 	1. read data from hugging face.
 	2. since data is too large, we have to batch it using map() over huggingface dataset. 
 	3. convert raw text data to tokens using the `TickToken`. Save the train_tokens and test_tokens as pytorch_tensors since re-tokenization takes time.
+
+2. Embedding
+
+
+  INPUT: [32, 256]
+
+          ┌─ TOKEN EMBEDDING ─→ [32, 256, 768]
+   Input ─┤                               ├─→ ADD ─→ [32, 256, 768]
+          └─ POS EMBEDDING ──→ [256, 768] ┘
+
+  They're parallel, not sequential:
+
+  Then they're added together (PyTorch broadcasts):
+  [32, 256, 768] + [256, 768] = [32, 256, 768]
+
+  You have:
+  Layer1(input) → output1 ──--┐
+                              ├→ ADD → final_output
+  Layer2(positions) → output2 ┘
+
+# Learnings
+- So it should be: nn.Embedding(CONTEXT_LENGTH, EMBEDDING_DIM)
+  Why? nn.Embedding(num_embeddings, embedding_dim) where:
+  - num_embeddings = how many things to look up (256 positions)
+  - embedding_dim = what dimension each outputs (768 dims)
