@@ -4,16 +4,16 @@ Based on GPT-2 (124M parameters)
 """
 
 # Model Architecture
-VOCAB_SIZE = 50257  # GPT-2 tokenizer vocabulary size
-CONTEXT_LENGTH = 256  # Maximum sequence length. 1024 in production.
-EMBEDDING_DIM = 768  # Token embedding dimension
-NUM_HEADS = 12  # Number of attention heads
-NUM_LAYERS = 12  # Number of transformer blocks
-DROPOUT_RATE = 0.1  # Dropout probability
-QKV_BIAS = False  # Use bias in QKV projections
+vocab_size = 50257  # GPT-2 tokenizer vocabulary size
+context_length = 256  # Maximum sequence length. 1024 in production.
+embedding_dim = 768  # Token embedding dimension
+num_heads = 12  # Number of attention heads
+num_layers = 12  # Number of transformer blocks
+dropout_rate = 0.1  # Dropout probability
+qkv_bias = False  # Use bias in QKV projections
 
 # Dataset and DataLoader
-STRIDE = CONTEXT_LENGTH
-BATCH_SIZE = 32
+stride = context_length
+batch_size = 32
 
 # Training

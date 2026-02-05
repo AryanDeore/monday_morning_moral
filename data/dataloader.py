@@ -3,7 +3,7 @@
 import torch
 from torch.utils.data import DataLoader
 from data.dataset import TokenDataset
-from utils.config import CONTEXT_LENGTH, STRIDE, BATCH_SIZE
+from utils.config import context_length, stride, batch_size
 
 
 def create_dataloader(split='train'):
@@ -22,14 +22,14 @@ def create_dataloader(split='train'):
     # Create dataset (creates sliding windows + input/target pairs)
     dataset = TokenDataset(
         token_tensor=token_tensor,
-        context_length=CONTEXT_LENGTH,
-        stride=STRIDE
+        context_length=context_length,
+        stride=stride
     )
 
     # Wrap in DataLoader (creates batches)
     dataloader = DataLoader(
         dataset,
-        batch_size=BATCH_SIZE,
+        batch_size=batch_size,
         shuffle=(split == 'train'),  # Shuffle only training data
         drop_last=True  # Drop incomplete batches
     )
