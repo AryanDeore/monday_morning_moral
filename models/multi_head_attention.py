@@ -47,7 +47,43 @@ class Head(nn.Module):
         return context_vec
 
 
-class MultiHeadAttention():
-    pass
+class MultiHeadAttention(nn.Module):
+    def __init__(self, num_heads, embedding_dim, context_length, dropout_rate):
+        super().__init__()
+        assert embedding_dim % num_heads == 0, \
+            f"embedding_dim ({embedding_dim}) must be divisible by num_heads ({num_heads})"
+
+        self.heads = nn.ModuleList([ Head(num_heads, embedding_dim, context_length, dropout_rate) for _ in range(num_heads)])
+        self.out_proj = nn.Linear(embedding_dim, embedding_dim)
+
+    def forward(self, token_embedding):
+        head_outputs = [head(token_embedding) for head in self.heads] # is a list of 12 tensors
+        concatenated = torch.cat(head_outputs, dim=-1)  # [32, 256, 768]
+        output = self.out_proj(concatenated)
+
+        return output
 
 
+if __name__ == "__main__":
+    # Create dummy input
+    batch_size = 32
+    seq_len = 256
+    embedding_dim = 768
+    context_length = 1024
+    num_heads = 12
+    dropout_rate = 0.1
+
+    # Create dummy token embedding
+    token_embedding = torch.randn(batch_size, seq_len, embedding_dim)
+    print(f"Input shape: {token_embedding.shape}")
+
+    # Create MHA module
+    mha = MultiHeadAttention(num_heads, embedding_dim, context_length, dropout_rate)
+
+    # Forward pass
+    output = mha(token_embedding)
+    print(f"Output shape: {output.shape}")
+
+    # Check if output shape is correct
+    assert output.shape == token_embedding.shape, "Output shape mismatch!"
+    print("✓ Test passed! Output shape is correct.")
