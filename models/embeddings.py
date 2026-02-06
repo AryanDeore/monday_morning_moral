@@ -1,7 +1,8 @@
 """
-accepts input_idw and creates embeddings with positon encoded
+accepts input_ids and creates embeddings with positon encoded
 # simulate input_ids = torch.tensor(torch.randint(low=0, high=50256, size=(32, 256)))
 input_ids = [50256, 2163, ...] 32 X 256
+output: embedding: [32, 256, 768]
 """
 
 from random import randint
