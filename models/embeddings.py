@@ -43,3 +43,28 @@ class Embeddings(nn.Module):
         final_embedding = self.dropout(combined)
 
         return final_embedding
+
+
+if __name__ == "__main__":
+    # Test Embeddings
+    batch_size = 32
+    seq_len = 256
+    vocab_size = 50257
+    embedding_dim = 768
+    context_length = 1024
+    dropout_rate = 0.1
+
+    # Create dummy token IDs
+    input_ids = torch.randint(0, vocab_size, (batch_size, seq_len))
+    print(f"Input token IDs shape: {input_ids.shape}")
+
+    # Create Embeddings module
+    embeddings = Embeddings(vocab_size, context_length, embedding_dim, dropout_rate)
+
+    # Forward pass
+    output = embeddings(input_ids)
+    print(f"Embeddings output shape: {output.shape}")
+
+    # Check output shape
+    assert output.shape == (batch_size, seq_len, embedding_dim), "Output shape mismatch!"
+    print("✓ Test passed! Embeddings working correctly.")
