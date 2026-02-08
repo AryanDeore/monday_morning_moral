@@ -35,7 +35,7 @@ class Embeddings(nn.Module):
         """
         tok_embeds = self.token_embedding(input_ids)
 
-        pos = torch.arange((input_ids.shape[1]))
+        pos = torch.arange((input_ids.shape[1]), device=input_ids.device)
         pos_embeds = self.pos_embedding(pos)
 
         combined = tok_embeds + pos_embeds

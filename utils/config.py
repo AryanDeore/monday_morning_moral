@@ -17,3 +17,5 @@ stride = context_length
 batch_size = 32
 
 # Training
+learning_rate = 0.0003
+num_epochs = 6
