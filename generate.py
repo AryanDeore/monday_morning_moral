@@ -108,13 +108,16 @@ if __name__ == "__main__":
     tokenizer = tiktoken.get_encoding("gpt2")
 
     # Load model checkpoint
-    checkpoint_path = "checkpoints/model_epoch_5.pt"  # Update path if needed
+    checkpoint_path = "checkpoints/gpt2-125m/model_epoch_3.pt"  # Update path if needed
     try:
         model = load_model(checkpoint_path, device)
     except FileNotFoundError:
         print(f"Error: Checkpoint not found at {checkpoint_path}")
         print("Train the model first using: python train.py")
         exit(1)
+
+    # Extract actual context_length from model (handles different checkpoint configs)
+    actual_context_length = model.embeddings.pos_embedding.weight.shape[0]
 
     # Generation parameters
     prompt = "Once upon a time"
@@ -127,7 +130,8 @@ if __name__ == "__main__":
     print(f"  Prompt: '{prompt}'")
     print(f"  Max tokens: {max_new_tokens}")
     print(f"  Temperature: {temperature}")
-    print(f"  Top-k: {top_k}\n")
+    print(f"  Top-k: {top_k}")
+    print(f"  Model context length: {actual_context_length}\n")
 
     # Convert prompt to tokens
     input_ids = text_to_token_ids(prompt, tokenizer).to(device)
@@ -139,7 +143,7 @@ if __name__ == "__main__":
         model=model,
         idx=input_ids,
         max_new_tokens=max_new_tokens,
-        context_size=context_length,
+        context_size=actual_context_length,
         temperature=temperature,
         top_k=top_k,
         eos_id=eos_id
