@@ -106,12 +106,12 @@ def train(num_epochs, max_batches=None):
             total_loss += loss.item()
             batch_count += 1
 
-            if batch_count % 10 == 0:
+            if batch_count % 1 == 0:
                 avg_loss = total_loss / batch_count
                 print(f"Epoch {epoch + 1}, Batch {batch_count}, Loss: {loss.item():.4f}")
 
         # Validation every 10 epochs
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % 1 == 0:
             model.eval()
             val_loss = 0
             val_batches = 0
@@ -135,6 +135,6 @@ def train(num_epochs, max_batches=None):
 if __name__ == "__main__":
 
     num_epochs = 1
-    max_batches = 100
+    max_batches = 1
     
     train(num_epochs=num_epochs, max_batches=max_batches)
