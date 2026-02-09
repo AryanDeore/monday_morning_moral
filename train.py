@@ -158,8 +158,8 @@ def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"
                 val_loss += loss_fn(val_logits, val_targets).item()
                 val_batches += 1
 
-        avg_train_loss = total_loss / batch_count
-        avg_val_loss = val_loss / val_batches
+        avg_train_loss = total_loss / batch_count if batch_count > 0 else 0.0
+        avg_val_loss = val_loss / val_batches if val_batches > 0 else 0.0
 
         # Append to tracking lists
         train_losses.append(avg_train_loss)
@@ -167,7 +167,10 @@ def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"
 
         # Only log and save on main process
         if accelerator.is_main_process:
-            print(f"Epoch {epoch + 1}/{num_epochs}: Train Loss = {avg_train_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
+            if batch_count == 0:
+                print(f"Epoch {epoch + 1}/{num_epochs}: WARNING - No training batches processed")
+            else:
+                print(f"Epoch {epoch + 1}/{num_epochs}: Train Loss = {avg_train_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
 
             # Save checkpoint every epoch (unwrap model from Accelerate)
             unwrapped_model = accelerator.unwrap_model(model)
