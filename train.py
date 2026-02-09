@@ -44,13 +44,23 @@ Training loop:
 
 import torch
 import torch.nn as nn
+import time
 from models import gpt2
 from data.dataloader import create_dataloader
+from checkpoint import save_checkpoint
 from utils.config import *
 
-def train(num_epochs, max_batches=None):
+def train(num_epochs, max_batches=None, max_tokens=None):
+    """
+    Train GPT-2 model.
+
+    Args:
+        num_epochs: Number of training epochs
+        max_batches: Limit batches per epoch (for quick testing)
+        max_tokens: Limit tokens in dataset (for quick testing)
+    """
     model = gpt2.GPT2(
-        dropout_rate=dropout_rate, 
+        dropout_rate=dropout_rate,
         vocab_size=vocab_size,
         context_length=context_length,
         embedding_dim=embedding_dim,
@@ -61,6 +71,7 @@ def train(num_epochs, max_batches=None):
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=learning_rate
+        # ,fused=True
     )
 
     loss_fn = nn.CrossEntropyLoss()
@@ -74,10 +85,14 @@ def train(num_epochs, max_batches=None):
 
     model = model.to(device)
     print(f"Using device: {device}")
-    
-    train_dataloader = create_dataloader(split='train')
-    test_dataloader = create_dataloader(split='test')
-    print(f"Dataloaders created successfully")
+
+    train_dataloader = create_dataloader(split='train', max_tokens=max_tokens)
+    test_dataloader = create_dataloader(split='test', max_tokens=max_tokens // 10 if max_tokens else None)
+    print(f"Dataloaders created successfully\n")
+
+    # Track losses for plotting
+    train_losses = []
+    val_losses = []
 
     for epoch in range(num_epochs):
         model.train()
@@ -98,43 +113,67 @@ def train(num_epochs, max_batches=None):
             loss = loss_fn(logits, targets)
 
             loss.backward()
-
             optimizer.step()
-
             optimizer.zero_grad()
 
             total_loss += loss.item()
             batch_count += 1
 
-            if batch_count % 1 == 0:
-                avg_loss = total_loss / batch_count
-                print(f"Epoch {epoch + 1}, Batch {batch_count}, Loss: {loss.item():.4f}")
+        # Validation and logging
+        model.eval()
+        val_loss = 0
+        val_batches = 0
 
-        # Validation every 10 epochs
-        if (epoch + 1) % 1 == 0:
-            model.eval()
-            val_loss = 0
-            val_batches = 0
+        with torch.no_grad():
+            for val_input_ids, val_targets in test_dataloader:
+                val_input_ids = val_input_ids.to(device)
+                val_targets = val_targets.to(device)
 
-            with torch.no_grad():
-                for val_input_ids, val_targets in test_dataloader:
-                    val_input_ids = val_input_ids.to(device)
-                    val_targets = val_targets.to(device)
+                val_logits = model(val_input_ids)
+                val_logits = torch.reshape(val_logits, (-1, vocab_size))
+                val_targets = torch.reshape(val_targets, (-1,))
+                val_loss += loss_fn(val_logits, val_targets).item()
+                val_batches += 1
 
-                    val_logits = model(val_input_ids)
-                    val_logits = torch.reshape(val_logits, (-1, vocab_size))
-                    val_targets = torch.reshape(val_targets, (-1,))
-                    val_loss += loss_fn(val_logits, val_targets).item()
-                    val_batches += 1
+        avg_train_loss = total_loss / batch_count
+        avg_val_loss = val_loss / val_batches
 
-            avg_train_loss = total_loss / batch_count
-            avg_val_loss = val_loss / val_batches
-            print(f"Epoch {epoch + 1}: Train Loss = {avg_train_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
+        # Append to tracking lists
+        train_losses.append(avg_train_loss)
+        val_losses.append(avg_val_loss)
+
+        print(f"Epoch {epoch + 1}/{num_epochs}: Train Loss = {avg_train_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
+
+        # Save checkpoint every epoch
+        save_checkpoint(model, epoch)
+
+    print(f"\nTraining complete!")
+    print(f"Final Train Loss: {train_losses[-1]:.4f}")
+    print(f"Final Val Loss: {val_losses[-1]:.4f}")
+
+    return train_losses, val_losses
 
 
 if __name__ == "__main__":
+    # Testing configuration (quick iteration)
+    num_epochs = 5
+    max_batches = None  # No batch limit
+    max_tokens = 100000  # Use only 100k tokens for fast testing
 
-    num_epochs = 1
-    max_batches = 1
-    
-    train(num_epochs=num_epochs, max_batches=max_batches)
+    # For full training, use:
+    # num_epochs = 6
+    # max_batches = None
+    # max_tokens = None  # Use all 500M tokens
+
+    print(f"Training config: epochs={num_epochs}, max_tokens={max_tokens}\n")
+
+    start_time = time.time()
+    train_losses, val_losses = train(num_epochs=num_epochs, max_batches=max_batches, max_tokens=max_tokens)
+    end_time = time.time()
+
+    elapsed_time = end_time - start_time
+    print(f"\nTraining completed in {elapsed_time:.2f} seconds ({elapsed_time/60:.2f} minutes)")
+
+    # Save losses for later plotting
+    # print(f"\nTrain Losses: {[f'{l:.4f}' for l in train_losses]}")
+    # print(f"Val Losses: {[f'{l:.4f}' for l in val_losses]}")
