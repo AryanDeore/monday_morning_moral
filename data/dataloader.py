@@ -3,20 +3,25 @@
 import torch
 from torch.utils.data import DataLoader
 from data.dataset import TokenDataset
-from utils.config import context_length, stride, batch_size
+from utils.config import batch_size
 
 
-def create_dataloader(split='train', max_tokens=None):
+def create_dataloader(split='train', max_tokens=None, context_length=512, stride=None):
     """
     Create a DataLoader for training or testing.
 
     Args:
         split: 'train' or 'test'
         max_tokens: Optional limit on number of tokens to load (for testing)
+        context_length: Context window size
+        stride: Stride for sliding window (default: context_length)
 
     Returns:
         DataLoader with batched token sequences
     """
+    if stride is None:
+        stride = context_length
+
     # Load pre-tokenized tokens
     token_tensor = torch.load(f"data/{split}_tokens.pt")
 
