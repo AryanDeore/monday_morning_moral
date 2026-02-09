@@ -24,17 +24,17 @@ def save_checkpoint(model, epoch, config_name="gpt2-125m", checkpoint_dir="check
 
     filepath = os.path.join(subdir, f"model_epoch_{epoch + 1}.pt")
 
-    # Save checkpoint with metadata
+    # Save checkpoint with metadata (extract config from model instance attributes)
     checkpoint = {
         "model_state_dict": model.state_dict(),
         "epoch": epoch + 1,
         "config": {
-            "vocab_size": vocab_size,
-            "context_length": context_length,
-            "embedding_dim": embedding_dim,
-            "num_heads": num_heads,
-            "num_layers": num_layers,
-            "dropout_rate": dropout_rate,
+            "vocab_size": model.vocab_size,
+            "context_length": model.context_length,
+            "embedding_dim": model.embedding_dim,
+            "num_heads": model.num_heads,
+            "num_layers": model.num_layers,
+            "dropout_rate": model.dropout_rate,
         }
     }
 
@@ -64,24 +64,36 @@ def load_model(filepath, device):
     else:
         # Old format: checkpoint is just the state_dict
         state_dict = checkpoint
-        cfg = {
-            "dropout_rate": dropout_rate,
-            "vocab_size": vocab_size,
-            "context_length": context_length,
-            "embedding_dim": embedding_dim,
-            "num_layers": num_layers,
-            "num_heads": num_heads
-        }
-        print("Loaded legacy checkpoint (no metadata). Using config from utils.config")
+        cfg = {}
+        print("Loaded legacy checkpoint (no metadata)")
 
-    # Create model with loaded or default config
+    # Extract true config from model weights (overrides any wrong config values)
+    pos_emb_shape = state_dict["embeddings.pos_embedding.weight"].shape
+    true_context_length = pos_emb_shape[0]
+    true_embedding_dim = pos_emb_shape[1]
+    true_vocab_size = state_dict["output_layer.weight"].shape[0]
+
+    # Count transformer blocks by finding the highest block index
+    block_keys = [k for k in state_dict if k.startswith("blocks.")]
+    true_num_layers = max(int(k.split(".")[1]) for k in block_keys) + 1
+
+    # Count attention heads from the first block
+    head_keys = [k for k in state_dict if k.startswith("blocks.0.mha.heads.") and k.endswith(".q.weight")]
+    true_num_heads = len(head_keys)
+
+    # Use dropout from config dict if available, otherwise default
+    true_dropout_rate = cfg.get("dropout_rate", 0.1)
+
+    print(f"Model config from weights: context_length={true_context_length}, embedding_dim={true_embedding_dim}, num_layers={true_num_layers}, num_heads={true_num_heads}")
+
+    # Create model with true config extracted from weights
     model = gpt2.GPT2(
-        dropout_rate=cfg["dropout_rate"],
-        vocab_size=cfg["vocab_size"],
-        context_length=cfg["context_length"],
-        embedding_dim=cfg["embedding_dim"],
-        num_layers=cfg["num_layers"],
-        num_heads=cfg["num_heads"]
+        dropout_rate=true_dropout_rate,
+        vocab_size=true_vocab_size,
+        context_length=true_context_length,
+        embedding_dim=true_embedding_dim,
+        num_layers=true_num_layers,
+        num_heads=true_num_heads
     )
 
     model.load_state_dict(state_dict)
