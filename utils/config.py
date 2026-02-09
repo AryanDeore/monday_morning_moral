@@ -54,7 +54,7 @@ def get_config(model_size: str = "125m") -> dict:
             "qkv_bias": False,
             "batch_size": 32,
             "learning_rate": 0.0005,
-            "num_epochs": 8,
+            "num_epochs": 2,
         },
     }
 
