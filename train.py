@@ -45,6 +45,7 @@ Training loop:
 import torch
 import torch.nn as nn
 import time
+from accelerate import Accelerator
 from models import gpt2
 from data.dataloader import create_dataloader
 from checkpoint import save_checkpoint
@@ -52,13 +53,16 @@ from utils.config import *
 
 def train(num_epochs, max_batches=None, max_tokens=None):
     """
-    Train GPT-2 model.
+    Train GPT-2 model with Accelerate for distributed training.
 
     Args:
         num_epochs: Number of training epochs
         max_batches: Limit batches per epoch (for quick testing)
         max_tokens: Limit tokens in dataset (for quick testing)
     """
+    # Initialize Accelerate for distributed training
+    accelerator = Accelerator()
+
     model = gpt2.GPT2(
         dropout_rate=dropout_rate,
         vocab_size=vocab_size,
@@ -66,7 +70,7 @@ def train(num_epochs, max_batches=None, max_tokens=None):
         embedding_dim=embedding_dim,
         num_layers=num_layers,
         num_heads=num_heads
-        )
+    )
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -76,19 +80,19 @@ def train(num_epochs, max_batches=None, max_tokens=None):
 
     loss_fn = nn.CrossEntropyLoss()
 
-    if torch.cuda.is_available():
-        device = 'cuda'
-    elif torch.backends.mps.is_available():
-        device = 'mps'
-    else:
-        device = 'cpu'
-
-    model = model.to(device)
-    print(f"Using device: {device}")
-
+    # Create dataloaders
     train_dataloader = create_dataloader(split='train', max_tokens=max_tokens)
     test_dataloader = create_dataloader(split='test', max_tokens=max_tokens // 10 if max_tokens else None)
-    print(f"Dataloaders created successfully\n")
+
+    # Prepare model, optimizer, and dataloaders for distributed training
+    model, optimizer, train_dataloader, test_dataloader = accelerator.prepare(
+        model, optimizer, train_dataloader, test_dataloader
+    )
+
+    if accelerator.is_main_process:
+        print(f"Using device: {accelerator.device}")
+        print(f"Number of GPUs: {accelerator.num_processes}")
+        print(f"Dataloaders created successfully\n")
 
     # Track losses for plotting
     train_losses = []
@@ -103,8 +107,7 @@ def train(num_epochs, max_batches=None, max_tokens=None):
             if max_batches and batch_count >= max_batches:
                 break
 
-            input_ids = input_ids.to(device)
-            targets = targets.to(device)
+            # Data is already on the correct device via accelerator.prepare()
 
             # Forward pass
             logits = model(input_ids)  # [batch, seq_len, vocab_size]
@@ -112,7 +115,8 @@ def train(num_epochs, max_batches=None, max_tokens=None):
             targets = torch.reshape(targets, (-1,))
             loss = loss_fn(logits, targets)
 
-            loss.backward()
+            # Backward pass with Accelerate
+            accelerator.backward(loss)
             optimizer.step()
             optimizer.zero_grad()
 
@@ -126,8 +130,7 @@ def train(num_epochs, max_batches=None, max_tokens=None):
 
         with torch.no_grad():
             for val_input_ids, val_targets in test_dataloader:
-                val_input_ids = val_input_ids.to(device)
-                val_targets = val_targets.to(device)
+                # Data is already on the correct device via accelerator.prepare()
 
                 val_logits = model(val_input_ids)
                 val_logits = torch.reshape(val_logits, (-1, vocab_size))
@@ -142,14 +145,18 @@ def train(num_epochs, max_batches=None, max_tokens=None):
         train_losses.append(avg_train_loss)
         val_losses.append(avg_val_loss)
 
-        print(f"Epoch {epoch + 1}/{num_epochs}: Train Loss = {avg_train_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
+        # Only log and save on main process
+        if accelerator.is_main_process:
+            print(f"Epoch {epoch + 1}/{num_epochs}: Train Loss = {avg_train_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
 
-        # Save checkpoint every epoch
-        save_checkpoint(model, epoch)
+            # Save checkpoint every epoch (unwrap model from Accelerate)
+            unwrapped_model = accelerator.unwrap_model(model)
+            save_checkpoint(unwrapped_model, epoch)
 
-    print(f"\nTraining complete!")
-    print(f"Final Train Loss: {train_losses[-1]:.4f}")
-    print(f"Final Val Loss: {val_losses[-1]:.4f}")
+    if accelerator.is_main_process:
+        print(f"\nTraining complete!")
+        print(f"Final Train Loss: {train_losses[-1]:.4f}")
+        print(f"Final Val Loss: {val_losses[-1]:.4f}")
 
     return train_losses, val_losses
 
@@ -157,7 +164,7 @@ def train(num_epochs, max_batches=None, max_tokens=None):
 if __name__ == "__main__":
     # Testing configuration (quick iteration)
     num_epochs = 5
-    max_batches = None  # No batch limit
+    max_batches = 5  # No batch limit
     max_tokens = 100000  # Use only 100k tokens for fast testing
 
     # For full training, use:
