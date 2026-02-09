@@ -14,11 +14,21 @@ The model flow is:
 """
 import torch
 import torch.nn as nn
+from huggingface_hub import PyTorchModelHubMixin
 from models import embeddings, transformer
 
-class GPT2(nn.Module):
+class GPT2(nn.Module, PyTorchModelHubMixin):
+    _model_name = "gpt2"
+
     def __init__(self, dropout_rate, vocab_size, context_length, embedding_dim, num_layers, num_heads):
         super().__init__()
+        # Store init parameters as instance attributes for HF Hub mixin serialization
+        self.dropout_rate = dropout_rate
+        self.vocab_size = vocab_size
+        self.context_length = context_length
+        self.embedding_dim = embedding_dim
+        self.num_layers = num_layers
+        self.num_heads = num_heads
         self.embeddings = embeddings.Embeddings(vocab_size, context_length, embedding_dim, dropout_rate)
         self.dropout = nn.Dropout(dropout_rate)
         self.blocks = nn.ModuleList([ transformer.Transformer(context_length, embedding_dim, num_heads, dropout_rate) for _ in range(num_layers)])

@@ -46,13 +46,28 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 import time
+import json
+import math
+import os
+import argparse
 from accelerate import Accelerator
 from models import gpt2
 from data.dataloader import create_dataloader
 from checkpoint import save_checkpoint
-from utils.config import *
+from utils.config import get_config
 
-def train(num_epochs, max_batches=None, max_tokens=None):
+# Default config values (will be overridden by --model-size argument)
+vocab_size = 50257
+context_length = 1024
+embedding_dim = 768
+num_heads = 12
+num_layers = 12
+dropout_rate = 0.1
+batch_size = 32
+learning_rate = 0.0003
+num_epochs = 6
+
+def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"):
     """
     Train GPT-2 model with Accelerate for distributed training.
 
@@ -60,9 +75,10 @@ def train(num_epochs, max_batches=None, max_tokens=None):
         num_epochs: Number of training epochs
         max_batches: Limit batches per epoch (for quick testing)
         max_tokens: Limit tokens in dataset (for quick testing)
+        config_name: Name of config for checkpoint directory (e.g., "gpt2-125m", "gpt2-30m")
     """
-    # Initialize Accelerate for distributed training
-    accelerator = Accelerator()
+    # Initialize Accelerate for distributed training with bf16 mixed precision
+    accelerator = Accelerator(mixed_precision="bf16")
 
     model = gpt2.GPT2(
         dropout_rate=dropout_rate,
@@ -73,10 +89,13 @@ def train(num_epochs, max_batches=None, max_tokens=None):
         num_heads=num_heads
     )
 
+    # Calculate model size
+    param_count = sum(p.numel() for p in model.parameters())
+
     optimizer = torch.optim.AdamW(
         model.parameters(),
-        lr=learning_rate
-        # ,fused=True
+        lr=learning_rate,
+        fused=True
     )
 
     loss_fn = nn.CrossEntropyLoss()
@@ -152,35 +171,99 @@ def train(num_epochs, max_batches=None, max_tokens=None):
 
             # Save checkpoint every epoch (unwrap model from Accelerate)
             unwrapped_model = accelerator.unwrap_model(model)
-            save_checkpoint(unwrapped_model, epoch)
+            save_checkpoint(unwrapped_model, epoch, config_name=config_name)
 
     if accelerator.is_main_process:
         print(f"\nTraining complete!")
         print(f"Final Train Loss: {train_losses[-1]:.4f}")
         print(f"Final Val Loss: {val_losses[-1]:.4f}")
 
-    return train_losses, val_losses
+    return train_losses, val_losses, param_count
 
 
 if __name__ == "__main__":
-    # Testing configuration (quick iteration)
-    num_epochs = 5
-    max_batches = 5  # No batch limit
-    max_tokens = 300000  # Use only 100k tokens for fast testing
+    parser = argparse.ArgumentParser(description="Train GPT-2 model")
+    parser.add_argument(
+        "--model-size",
+        choices=["125m", "30m"],
+        default="125m",
+        help="Model size to train (default: 125m)"
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Limit tokens in dataset (for quick testing)"
+    )
+    parser.add_argument(
+        "--max-batches",
+        type=int,
+        default=None,
+        help="Limit batches per epoch (for quick testing)"
+    )
+    args = parser.parse_args()
 
-    # For full training, use:
-    # num_epochs = 6
-    # max_batches = None
-    # max_tokens = None  # Use all 500M tokens
+    # Load config for selected model size
+    config = get_config(args.model_size)
 
-    print(f"Training config: epochs={num_epochs}, max_tokens={max_tokens}\n")
+    # Update module-level variables with selected config
+    vocab_size = config["vocab_size"]
+    context_length = config["context_length"]
+    embedding_dim = config["embedding_dim"]
+    num_heads = config["num_heads"]
+    num_layers = config["num_layers"]
+    dropout_rate = config["dropout_rate"]
+    batch_size = config["batch_size"]
+    learning_rate = config["learning_rate"]
+    num_epochs = config["num_epochs"]
+
+    config_name = f"gpt2-{args.model_size}"
+
+    print(f"Training GPT-2 {args.model_size.upper()} model")
+    print(f"Config: vocab_size={vocab_size}, context_length={context_length}, embedding_dim={embedding_dim}")
+    print(f"Training config: epochs={num_epochs}, max_tokens={args.max_tokens}\n")
 
     start_time = time.time()
-    train_losses, val_losses = train(num_epochs=num_epochs, max_batches=max_batches, max_tokens=max_tokens)
+    train_losses, val_losses, param_count = train(
+        num_epochs=num_epochs,
+        max_batches=args.max_batches,
+        max_tokens=args.max_tokens,
+        config_name=config_name
+    )
     end_time = time.time()
 
     elapsed_time = end_time - start_time
     print(f"\nTraining completed in {elapsed_time:.2f} seconds ({elapsed_time/60:.2f} minutes)")
+
+    # Save training metrics
+    metrics = {
+        "param_count": param_count,
+        "train_losses": train_losses,
+        "val_losses": val_losses,
+        "val_perplexities": [math.exp(loss) for loss in val_losses],
+        "training_time_seconds": elapsed_time,
+        "hardware": {
+            "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
+            "num_gpu_processes": None  # Will be set by Accelerate in distributed training
+        },
+        "config": {
+            "vocab_size": vocab_size,
+            "context_length": context_length,
+            "embedding_dim": embedding_dim,
+            "num_layers": num_layers,
+            "num_heads": num_heads,
+            "dropout_rate": dropout_rate,
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "num_epochs": num_epochs
+        }
+    }
+
+    metrics_path = os.path.join("checkpoints", config_name, "metrics.json")
+    os.makedirs(os.path.dirname(metrics_path), exist_ok=True)
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=2)
+    print(f"Metrics saved to {metrics_path}")
 
     # Clean up distributed training resources
     if dist.is_available() and dist.is_initialized():

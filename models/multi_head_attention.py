@@ -13,7 +13,6 @@ simulate token_embedding = torch.rand(32, 256, 768)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.config import *
 
 class Head(nn.Module):
     def __init__(self, num_heads, embedding_dim, context_length, dropout_rate):
