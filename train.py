@@ -44,6 +44,7 @@ Training loop:
 
 import torch
 import torch.nn as nn
+import torch.distributed as dist
 import time
 from accelerate import Accelerator
 from models import gpt2
@@ -165,7 +166,7 @@ if __name__ == "__main__":
     # Testing configuration (quick iteration)
     num_epochs = 5
     max_batches = 5  # No batch limit
-    max_tokens = 100000  # Use only 100k tokens for fast testing
+    max_tokens = 300000  # Use only 100k tokens for fast testing
 
     # For full training, use:
     # num_epochs = 6
@@ -180,6 +181,10 @@ if __name__ == "__main__":
 
     elapsed_time = end_time - start_time
     print(f"\nTraining completed in {elapsed_time:.2f} seconds ({elapsed_time/60:.2f} minutes)")
+
+    # Clean up distributed training resources
+    if dist.is_available() and dist.is_initialized():
+        dist.destroy_process_group()
 
     # Save losses for later plotting
     # print(f"\nTrain Losses: {[f'{l:.4f}' for l in train_losses]}")
