@@ -114,6 +114,14 @@ def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"
         print(f"Number of GPUs: {accelerator.num_processes}")
         print(f"Dataloaders created successfully\n")
 
+    # Debug: Check actual batch size
+    for input_ids, targets in train_dataloader:
+        if accelerator.is_main_process:
+            print(f"DEBUG - Input batch shape: {input_ids.shape}")
+            print(f"DEBUG - Per-GPU batch size: {input_ids.shape[0]}")
+            print(f"DEBUG - Sequence length: {input_ids.shape[1]}")
+        break
+
     # Track losses for plotting
     train_losses = []
     val_losses = []

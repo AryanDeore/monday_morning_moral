@@ -52,9 +52,9 @@ def get_config(model_size: str = "125m") -> dict:
             "num_layers": 6,
             "dropout_rate": 0.1,
             "qkv_bias": False,
-            "batch_size": 32,
+            "batch_size": 64,
             "learning_rate": 0.0005,
-            "num_epochs": 2,
+            "num_epochs": 6,
         },
     }
 

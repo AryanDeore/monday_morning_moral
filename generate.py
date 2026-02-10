@@ -121,10 +121,10 @@ if __name__ == "__main__":
 
     # Generation parameters
     prompt = "Once upon a time"
-    max_new_tokens = 50
+    max_new_tokens = 200
     temperature = 1.0  # 0.0 = greedy, 1.0 = neutral, >1.0 = more random
     top_k = 50  # Only sample from top 50 tokens, None to disable
-    eos_id = None  # Set to token ID to stop on end-of-text, e.g., 50256
+    eos_id = 50256  # Set to token ID to stop on end-of-text, e.g., 50256
 
     print(f"Generation config:")
     print(f"  Prompt: '{prompt}'")
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         context_size=actual_context_length,
         temperature=temperature,
         top_k=top_k,
-        eos_id=eos_id
+        eos_id=50256
     )
     end_time = time.time()
 
