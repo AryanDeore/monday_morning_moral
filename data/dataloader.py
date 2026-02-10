@@ -3,10 +3,9 @@
 import torch
 from torch.utils.data import DataLoader
 from data.dataset import TokenDataset
-from utils.config import batch_size
 
 
-def create_dataloader(split='train', max_tokens=None, context_length=512, stride=None):
+def create_dataloader(split='train', max_tokens=None, context_length=512, stride=None, batch_size=32):
     """
     Create a DataLoader for training or testing.
 

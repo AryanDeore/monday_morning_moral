@@ -101,8 +101,8 @@ def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"
     loss_fn = nn.CrossEntropyLoss()
 
     # Create dataloaders
-    train_dataloader = create_dataloader(split='train', max_tokens=max_tokens, context_length=context_length)
-    test_dataloader = create_dataloader(split='test', max_tokens=max_tokens // 10 if max_tokens else None, context_length=context_length)
+    train_dataloader = create_dataloader(split='train', max_tokens=max_tokens, context_length=context_length, batch_size=batch_size)
+    test_dataloader = create_dataloader(split='test', max_tokens=max_tokens // 10 if max_tokens else None, context_length=context_length, batch_size=batch_size)
 
     # Prepare model, optimizer, and dataloaders for distributed training
     model, optimizer, train_dataloader, test_dataloader = accelerator.prepare(
