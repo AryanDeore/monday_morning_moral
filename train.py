@@ -53,7 +53,7 @@ import argparse
 from accelerate import Accelerator
 from models import gpt2
 from data.dataloader import create_dataloader
-from checkpoint import save_checkpoint
+from checkpoint import save_checkpoint, load_checkpoint
 from utils.config import get_config
 
 # Default config values (will be overridden by --model-size argument)
@@ -67,7 +67,7 @@ batch_size = 32
 learning_rate = 0.0003
 num_epochs = 6
 
-def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"):
+def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m", resume_from_epoch=None):
     """
     Train GPT-2 model with Accelerate for distributed training.
 
@@ -98,6 +98,16 @@ def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"
         fused=True
     )
 
+    # Load checkpoint if resuming
+    start_epoch = 0
+    if resume_from_epoch is not None:
+        checkpoint_path = f"checkpoints/{config_name}/model_epoch_{resume_from_epoch}.pt"
+        model, optimizer_state_dict, _ = load_checkpoint(checkpoint_path, accelerator.device)
+        optimizer.load_state_dict(optimizer_state_dict) if optimizer_state_dict else None
+        start_epoch = resume_from_epoch
+        if accelerator.is_main_process:
+            print(f"Resuming from epoch {resume_from_epoch}\n")
+
     loss_fn = nn.CrossEntropyLoss()
 
     # Create dataloaders
@@ -126,7 +136,7 @@ def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"
     train_losses = []
     val_losses = []
 
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         model.train()
         batch_count = 0
         total_loss = 0
@@ -182,7 +192,7 @@ def train(num_epochs, max_batches=None, max_tokens=None, config_name="gpt2-125m"
 
             # Save checkpoint every epoch (unwrap model from Accelerate)
             unwrapped_model = accelerator.unwrap_model(model)
-            save_checkpoint(unwrapped_model, epoch, config_name=config_name)
+            save_checkpoint(unwrapped_model, epoch, optimizer=optimizer, config_name=config_name)
 
     if accelerator.is_main_process:
         print(f"\nTraining complete!")
@@ -212,6 +222,12 @@ if __name__ == "__main__":
         default=None,
         help="Limit batches per epoch (for quick testing)"
     )
+    parser.add_argument(
+        "--resume-from-epoch",
+        type=int,
+        default=None,
+        help="Resume training from a specific epoch checkpoint"
+    )
     args = parser.parse_args()
 
     # Load config for selected model size
@@ -239,7 +255,8 @@ if __name__ == "__main__":
         num_epochs=num_epochs,
         max_batches=args.max_batches,
         max_tokens=args.max_tokens,
-        config_name=config_name
+        config_name=config_name,
+        resume_from_epoch=args.resume_from_epoch
     )
     end_time = time.time()
 

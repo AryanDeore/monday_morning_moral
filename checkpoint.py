@@ -8,13 +8,14 @@ from models import gpt2
 from utils.config import *
 
 
-def save_checkpoint(model, epoch, config_name="gpt2-125m", checkpoint_dir="checkpoints"):
+def save_checkpoint(model, epoch, optimizer=None, config_name="gpt2-125m", checkpoint_dir="checkpoints"):
     """
-    Save model checkpoint with metadata.
+    Save model checkpoint with metadata and optimizer state.
 
     Args:
         model: GPT-2 model
         epoch: Current epoch number
+        optimizer: Optimizer (optional, for resuming training)
         config_name: Name of config (e.g., "gpt2-125m", "gpt2-30m"). Used to create subdirectory.
         checkpoint_dir: Base directory to save checkpoints
     """
@@ -37,6 +38,10 @@ def save_checkpoint(model, epoch, config_name="gpt2-125m", checkpoint_dir="check
             "dropout_rate": model.dropout_rate,
         }
     }
+
+    # Save optimizer state if provided
+    if optimizer is not None:
+        checkpoint["optimizer_state_dict"] = optimizer.state_dict()
 
     torch.save(checkpoint, filepath)
     print(f"Epoch {epoch + 1}: Checkpoint saved at {filepath}")
@@ -102,3 +107,61 @@ def load_model(filepath, device):
 
     print(f"Loaded model from: {filepath}\n")
     return model
+
+
+def load_checkpoint(filepath, device):
+    """
+    Load checkpoint for resuming training. Returns model, optimizer state, and epoch.
+
+    Args:
+        filepath: Path to checkpoint file
+        device: Device to load on
+
+    Returns:
+        Tuple of (model, optimizer_state_dict, epoch) or (model, None, epoch) if optimizer state not available
+    """
+    checkpoint = torch.load(filepath, map_location=device)
+
+    # Extract model state
+    if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+        state_dict = checkpoint["model_state_dict"]
+        cfg = checkpoint["config"]
+        epoch = checkpoint.get("epoch", 1)
+    else:
+        state_dict = checkpoint
+        cfg = {}
+        epoch = 1
+        print("Loaded legacy checkpoint (no metadata)")
+
+    # Extract true config from model weights
+    pos_emb_shape = state_dict["embeddings.pos_embedding.weight"].shape
+    true_context_length = pos_emb_shape[0]
+    true_embedding_dim = pos_emb_shape[1]
+    true_vocab_size = state_dict["output_layer.weight"].shape[0]
+
+    block_keys = [k for k in state_dict if k.startswith("blocks.")]
+    true_num_layers = max(int(k.split(".")[1]) for k in block_keys) + 1
+
+    head_keys = [k for k in state_dict if k.startswith("blocks.0.mha.heads.") and k.endswith(".q.weight")]
+    true_num_heads = len(head_keys)
+
+    true_dropout_rate = cfg.get("dropout_rate", 0.1)
+
+    # Create model with true config extracted from weights
+    model = gpt2.GPT2(
+        dropout_rate=true_dropout_rate,
+        vocab_size=true_vocab_size,
+        context_length=true_context_length,
+        embedding_dim=true_embedding_dim,
+        num_layers=true_num_layers,
+        num_heads=true_num_heads
+    )
+
+    model.load_state_dict(state_dict)
+    model = model.to(device)
+
+    # Extract optimizer state if available
+    optimizer_state_dict = checkpoint.get("optimizer_state_dict", None)
+
+    print(f"Loaded checkpoint from epoch {epoch}")
+    return model, optimizer_state_dict, epoch
