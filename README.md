@@ -29,7 +29,7 @@ inside and gave it some food. The big cat became small again. Tim was happy that
 was now a magic pipe. He and the big cat became best friends and played together every day.
 ```
 
-And from the **49M model**:
+And from the **30M model**:
 
 ```
 Once upon a time, there was a little girl named Lily. She had a big, blue box. One day, she
@@ -77,7 +77,7 @@ The training data comes from [TinyStoriesV2_cleaned](https://huggingface.co/data
 
 Two model variants were trained:
 
-| Config | 49M | 125M |
+| Config | 30M | 125M |
 |--------|-----|------|
 | Vocab size | 50,257 | 50,257 |
 | Context length | 512 | 512 |
@@ -108,7 +108,7 @@ monday_morning_moral/
 │   ├── dataset.py               # Sliding window dataset (input/target pairs)
 │   └── dataloader.py            # PyTorch DataLoader creation
 ├── utils/
-│   └── config.py                # Model configs (49M and 125M)
+│   └── config.py                # Model configs (30M and 125M)
 ├── train.py                     # Training loop with DDP via Accelerate
 ├── generate.py                  # Text generation (temperature + top-k sampling)
 ├── checkpoint.py                # Save/load model checkpoints
@@ -360,7 +360,7 @@ def generate(model, idx, max_new_tokens, context_size, temperature=1.0, top_k=No
 
 ## Training Results
 
-**30M model** (49.5M params, 6 epochs on NVIDIA H100 80GB, ~50 minutes):
+**30M model** (30M params, 6 epochs on NVIDIA H100 80GB, ~50 minutes):
 
 | Epoch | Train Loss | Val Loss | Val Perplexity |
 |-------|-----------|----------|----------------|
