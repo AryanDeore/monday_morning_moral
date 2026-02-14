@@ -301,7 +301,8 @@ class GPT2(nn.Module):
 Training uses cross-entropy loss between the model's predicted next-token distribution and the actual next token. The loss is calculated by flattening the logits and targets across the batch and sequence dimensions. Perplexity (e^loss) is tracked as a more interpretable metric - it roughly represents "how many tokens the model is choosing between" at each step.
 
 Distributed training is handled by HuggingFace's [Accelerate](https://huggingface.co/docs/accelerate) library, which wraps the model, optimizer, and dataloaders for **DDP (Distributed Data Parallel)** across multiple GPUs. Training uses **bf16 mixed precision** and a **fused AdamW optimizer** for performance on 4x H100 GPUs. Checkpoints are saved after every epoch.
-> `accelerate launch train.py --model-size 125m`
+
+<img width="769" height="636" alt="gpu_100" src="https://github.com/user-attachments/assets/8c2096b1-7828-43b5-8258-a787c4ff1b9b" />
 
 ```python
 accelerator = Accelerator(mixed_precision="bf16")
