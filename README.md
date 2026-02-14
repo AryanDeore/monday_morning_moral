@@ -302,8 +302,6 @@ Training uses cross-entropy loss between the model's predicted next-token distri
 
 Distributed training is handled by HuggingFace's [Accelerate](https://huggingface.co/docs/accelerate) library, which wraps the model, optimizer, and dataloaders for **DDP (Distributed Data Parallel)** across multiple GPUs. Training uses **bf16 mixed precision** and a **fused AdamW optimizer** for performance on 4x H100 GPUs. Checkpoints are saved after every epoch.
 
-<img width="769" height="636" alt="gpu_100" src="https://github.com/user-attachments/assets/8c2096b1-7828-43b5-8258-a787c4ff1b9b" />
-
 ```python
 accelerator = Accelerator(mixed_precision="bf16")
 model, optimizer, train_dataloader, test_dataloader = accelerator.prepare(
@@ -322,6 +320,8 @@ for epoch in range(num_epochs):
         optimizer.step()
         optimizer.zero_grad()
 ```
+
+<img width="769" height="636" alt="gpu_100" src="https://github.com/user-attachments/assets/8c2096b1-7828-43b5-8258-a787c4ff1b9b" />
 
 ### 9. Text Generation
 
