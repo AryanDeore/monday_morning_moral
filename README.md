@@ -380,6 +380,18 @@ Write a story about: a brave knight on an adventure
 With: a sad ending
 ```
 
+## References
+
+- [Training a base model from scratch on RTX 3090](https://www.gilesthomas.com/2025/12/llm-from-scratch-28-training-a-base-model-from-scratch) - Giles Thomas
+- [DDP training a base model in the cloud](https://www.gilesthomas.com/2026/01/llm-from-scratch-29-ddp-training-a-base-model-in-the-cloud) - Giles Thomas
+- [PyTorch Performance Tips for Faster LLM Training](https://github.com/rasbt/LLMs-from-scratch/tree/main/ch05/10_llm-training-speed) - Sebastian Raschka
+- [Attention? Attention!](https://lilianweng.github.io/posts/2018-06-24-attention/) - Lilian Weng
+- [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) - Jay Alammar
+- [Attention Mechanism Explained](https://www.youtube.com/watch?v=4vye3iUrR-g)
+- [Let's Build GPT from Scratch](https://www.youtube.com/watch?v=bQ5BoolX9Ag)
+- [LLMs from Scratch - Training](https://www.youtube.com/watch?v=YSAkgEarBGE&list=PLTKMiZHVd_2IIEsoJrWACkIxLRdfMlw11&index=4)
+- [Day 7: 21 Days of Building a Small Language Model](https://www.reddit.com/r/LocalLLaMA/comments/1pn0cik/day_7_21_days_of_building_a_small_language_model/)
+
 ---
 
 [![LinkedIn](https://img.shields.io/badge/linkedin-%230077B5.svg?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/aryandeore) [![Gmail](https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:aryandeore.work@gmail.com)
